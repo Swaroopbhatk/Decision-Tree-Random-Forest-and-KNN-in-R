@@ -1,0 +1,56 @@
+10 Fold Decision Tree: Accuracy
+Confusion Matrix and Statistics
+
+          Actual
+prediction negative positive
+  negative       65       12
+  positive       12       32
+                                          
+               Accuracy : 0.8017          
+                 95% CI : (0.7194, 0.8686)
+    No Information Rate : 0.6364          
+    P-Value [Acc > NIR] : 6.024e-05       
+                                          
+                  Kappa : 0.5714          
+ Mcnemar's Test P-Value : 1               
+                                          
+            Sensitivity : 0.8442          
+            Specificity : 0.7273          
+         Pos Pred Value : 0.8442          
+         Neg Pred Value : 0.7273          
+             Prevalence : 0.6364          
+         Detection Rate : 0.5372          
+   Detection Prevalence : 0.6364          
+      Balanced Accuracy : 0.7857          
+                                          
+       'Positive' Class : negative 
+
+############################################################################################################
+
+10 Fold Rndom Forest: Accuracy
+Confusion Matrix and Statistics
+
+          Actual
+prediction negative positive
+  negative       69       14
+  positive        8       30
+                                          
+               Accuracy : 0.8182          
+                 95% CI : (0.7378, 0.8824)
+    No Information Rate : 0.6364          
+    P-Value [Acc > NIR] : 9.811e-06       
+                                          
+                  Kappa : 0.5953          
+ Mcnemar's Test P-Value : 0.2864          
+                                          
+            Sensitivity : 0.8961          
+            Specificity : 0.6818          
+         Pos Pred Value : 0.8313          
+         Neg Pred Value : 0.7895          
+             Prevalence : 0.6364          
+         Detection Rate : 0.5702          
+   Detection Prevalence : 0.6860          
+      Balanced Accuracy : 0.7890          
+                                          
+       'Positive' Class : negative    
+	   

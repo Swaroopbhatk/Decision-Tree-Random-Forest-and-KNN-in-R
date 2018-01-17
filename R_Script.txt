@@ -1,0 +1,356 @@
+> library(caret)# For K fold cross validation and accuracy plot
+> library(rpart)# For modelling decison tree
+> library(FSelector)# For calculating IG
+> library(rpart.plot)# plotting an tree
+> library(randomForest)# For modelling random forest
+> library(XLConnect)# For reading an Illness excel
+> library(readxl)# For reading an Illness excel
+> 
+> getwd()
+[1] "C:/Users/Swaroop Bhat/Documents"
+> Illness = read_xlsx("illness.xlsx", col_names = TRUE)
+> Illness$test_result = as.factor(Illness$test_result)
+> 
+> #Splitting the data into test, train and validation data set
+> set.seed(99)
+> ind = sample(2, size = nrow(Illness), prob = c(0.7,0.3), replace = TRUE)
+> Train_data = Illness[ind==1,]
+> Test_data = Illness[ind==2,]
+> 
+> 
+> #Calculating Information Gain
+> IG = information.gain(test_result~., data = Train_data, unit = "log2")
+> #                   attr_importance
+> # plasma_glucose       0.15150770
+> # bp                   0.00000000
+> # skin_thickness       0.00000000
+> # num_pregnancies      0.00000000
+> # insulin              0.11023022
+> # bmi                  0.06990622
+> # pedigree             0.00000000
+> # age                  0.07741410
+> 
+> 
+> #Decision Tree
+> D_Tree = rpart(test_result~., data = Train_data, method = "class")
+> rpart.plot(D_Tree)
+> 
+> 
+> 
+> #Predicting the test data set and finding the accuracy
+> predict_D_Tree = predict(D_Tree, Test_data, type = "class")
+> Missclassification_error = mean(predict_D_Tree != Test_data$test_result) #Error is 29.7%
+> Missclassification_table = table(prediction = predict_D_Tree, Actual = Test_data$test_result)
+> confusionMatrix(Missclassification_table)
+#*********************************************
+# Confusion Matrix and Statistics
+# 
+# Actual
+# prediction negative positive
+# negative       65       24
+# positive       12       20
+# 
+# Accuracy : 0.7025          
+# 95% CI : (0.6126, 0.7821)
+# No Information Rate : 0.6364          
+# P-Value [Acc > NIR] : 0.07671         
+# 
+# Kappa : 0.3172          
+# Mcnemar's Test P-Value : 0.06675         
+#                                           
+#             Sensitivity : 0.8442          
+#             Specificity : 0.4545          
+#          Pos Pred Value : 0.7303          
+#          Neg Pred Value : 0.6250          
+#              Prevalence : 0.6364          
+#          Detection Rate : 0.5372          
+#    Detection Prevalence : 0.7355          
+#       Balanced Accuracy : 0.6494          
+#                                           
+#        'Positive' Class : negative        
+#***********************************************                                        
+> #Accuracy on testing data is 70.25% without k fold validation
+> 
+> 
+> #Pruning the tree:(Tuning Parameter)
+> printcp(D_Tree)
+#*************************************8*************
+#Classification tree:
+#rpart(formula = test_result ~ ., data = Train_data, method = "class")
+
+#Variables actually used in tree construction:
+#[1] age            bmi            insulin        pedigree       plasma_glucose
+
+#Root node error: 74/255 = 0.2902
+
+#n= 255 
+
+# CP nsplit rel error  xerror     xstd
+# 1 0.189189      0   1.00000 1.00000 0.097938
+# 2 0.121622      1   0.81081 1.01351 0.098325
+# 3 0.054054      2   0.68919 0.85135 0.093072
+# 4 0.040541      4   0.58108 0.91892 0.095427
+# 5 0.027027      5   0.54054 0.94595 0.096302
+# 6 0.013514      8   0.45946 0.91892 0.095427
+# 7 0.010000      9   0.44595 0.89189 0.094515
+#*************************************8*************
+
+> plotcp(D_Tree)
+> cp = D_Tree$cptable[which.min(D_Tree$cptable[,"xerror"]),"CP"]
+> pruned_D_Tree = prune(D_Tree, cp = cp) #minimum cp = 0.05405405
+> rpart.plot(pruned_D_Tree)
+> 
+> predict_PD_Tree = predict(pruned_D_Tree, Test_data, type = "class")
+> Missclassification_error = mean(predict_PD_Tree != Test_data$test_result) #Error is 19%
+> Missclassification_table = table(prediction = predict_PD_Tree, Actual = Test_data$test_result)
+> confusionMatrix(Missclassification_table)
+#*************************************
+# Confusion Matrix and Statistics
+# 
+# Actual
+# prediction negative positive
+# negative       65       12
+# positive       12       32
+# 
+# Accuracy : 0.8017          
+# 95% CI : (0.7194, 0.8686)
+# No Information Rate : 0.6364          
+# P-Value [Acc > NIR] : 6.024e-05       
+# 
+# Kappa : 0.5714          
+# Mcnemar's Test P-Value : 1               
+# 
+# Sensitivity : 0.8442          
+# Specificity : 0.7273          
+# Pos Pred Value : 0.8442          
+# Neg Pred Value : 0.7273          
+# Prevalence : 0.6364          
+# Detection Rate : 0.5372          
+# Detection Prevalence : 0.6364          
+# Balanced Accuracy : 0.7857          
+# 
+# 'Positive' Class : negative        
+#*************************************                                          
+> #Accuracy of pruned tree on testing data set is 80.17%
+> 
+> 
+> #K = 10 fold cross validation
+> #Modelling decsion tree using 10 fold cv on testing)
+> control <- trainControl(method="repeatedcv", number=10, savePredictions = TRUE, repeats = 4, search = "random")
+> D_Tree_CV_model <- train(test_result~., data=Train_data, method="rpart", trControl=control, metric = "Accuracy", tuneLength = 15)
+> print(D_Tree_CV_model)
+CART 
+
+255 samples
+  8 predictor
+  2 classes: 'negative', 'positive' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold, repeated 4 times) 
+Summary of sample sizes: 229, 229, 230, 229, 230, 230, ... 
+Resampling results across tuning parameters:
+
+  cp          Accuracy   Kappa    
+  0.00000000  0.7179615  0.2727232
+  0.01351351  0.7178846  0.2750360
+  0.02702703  0.7229231  0.2661783
+  0.04054054  0.7364231  0.3027237
+  0.05405405  0.7393462  0.3349894
+  0.12162162  0.7324231  0.3560506
+  0.18918919  0.7040769  0.1383530
+
+Accuracy was used to select the optimal model using  the largest value.
+The final value used for the model was cp = 0.05405405.
+> plot(D_Tree_CV_model)
+> 
+> 
+> #Testing with Test data set:
+> predict_KD_Tree = predict(D_Tree_CV_model, Test_data, method = "class")
+> Missclassification_table = table(prediction = predict_PD_Tree, Actual = Test_data$test_result)
+> confusionMatrix(Missclassification_table)
+#*************************************
+# Confusion Matrix and Statistics
+# 
+# Actual
+# prediction negative positive
+# negative       65       12
+# positive       12       32
+# 
+# Accuracy : 0.8017          
+# 95% CI : (0.7194, 0.8686)
+# No Information Rate : 0.6364          
+# P-Value [Acc > NIR] : 6.024e-05       
+# 
+# Kappa : 0.5714          
+# Mcnemar's Test P-Value : 1               
+# 
+# Sensitivity : 0.8442          
+# Specificity : 0.7273          
+# Pos Pred Value : 0.8442          
+# Neg Pred Value : 0.7273          
+# Prevalence : 0.6364          
+# Detection Rate : 0.5372          
+# Detection Prevalence : 0.6364          
+# Balanced Accuracy : 0.7857          
+# 
+# 'Positive' Class : negative 
+#********************************************       
+                                          
+> #Accuracy when 10 fold cv for a model on validation set is 80.17% which is same as pruned tree accuracy
+> 
+> 
+> #Accuracy has been increased from 69% to 80% after K fold cv validation. However, 80% accuracy is same as pruned tree
+> 
+> #******************************************************************************************************************
+> 
+> #*****//Random Forest//***********
+> RF_Tree = randomForest(test_result~., data = Train_data)#OOB error: 25.1%
+> #default value of mtry is sqrt of no of attributes ie 3
+> varImpPlot(RF_Tree)
+> 
+> #Predicting the test data set and finding the accuracy
+> predict_RF_Tree = predict(RF_Tree, Test_data, method = "class")
+> Missclassification_error = mean(predict_RF_Tree != Test_data$test_result) 
+> Missclassification_table = table(prediction = predict_RF_Tree, Actual = Test_data$test_result)
+> confusionMatrix(Missclassification_table)
+#******************************************** 
+# Confusion Matrix and Statistics
+# 
+# Actual
+# prediction negative positive
+# negative       68       14
+# positive        9       30
+# 
+# Accuracy : 0.8099          
+# 95% CI : (0.7286, 0.8755)
+# No Information Rate : 0.6364          
+# P-Value [Acc > NIR] : 2.494e-05       
+# 
+# Kappa : 0.579           
+# Mcnemar's Test P-Value : 0.4042          
+# 
+# Sensitivity : 0.8831          
+# Specificity : 0.6818          
+# Pos Pred Value : 0.8293          
+# Neg Pred Value : 0.7692          
+# Prevalence : 0.6364          
+# Detection Rate : 0.5620          
+# Detection Prevalence : 0.6777          
+# Balanced Accuracy : 0.7825          
+# 
+# 'Positive' Class : negative  
+#********************************************      
+                                          
+> #Accuracy on testing data is 80.99%
+> 
+> 
+> 
+> #Manual tuning: Using tuneRF function to find best mtry:
+> bestmtry = tuneRF(Train_data, Train_data$test_result, stepFactor = 1.2, improve = 0.01, trace = T, plot = T)
+mtry = 3  OOB error = 0% 
+Searching left ...
+Searching right ...
+> #best mtry is = 3
+> RF_Tree_MT = randomForest(test_result~., data = Train_data, mtr = 3)
+> predict_RF_Tree_M = predict(RF_Tree_MT, Test_data, method = "class")
+> Missclassification_error = mean(predict_RF_Tree_M != Test_data$test_result) 
+> Missclassification_table = table(prediction = predict_RF_Tree_M, Actual = Test_data$test_result)
+> confusionMatrix(Missclassification_table)
+#********************************************
+# Confusion Matrix and Statistics
+# 
+# Actual
+# prediction negative positive
+# negative       69       14
+# positive        8       30
+# 
+# Accuracy : 0.8182          
+# 95% CI : (0.7378, 0.8824)
+# No Information Rate : 0.6364          
+# P-Value [Acc > NIR] : 9.811e-06       
+# 
+# Kappa : 0.5953          
+# Mcnemar's Test P-Value : 0.2864          
+# 
+# Sensitivity : 0.8961          
+# Specificity : 0.6818          
+# Pos Pred Value : 0.8313          
+# Neg Pred Value : 0.7895          
+# Prevalence : 0.6364          
+# Detection Rate : 0.5702          
+# Detection Prevalence : 0.6860          
+# Balanced Accuracy : 0.7890          
+# 
+# 'Positive' Class : negative        
+#********************************************                                        
+> #Manual Tuning accuracy = 81%
+> 
+> 
+> 
+> #Auto tuning for mtry
+> 
+> control <- trainControl(method="repeatedcv", number=12, repeats=4, savePredictions = TRUE, search = "random")
+> metric = "Accuracy"
+> RF_Tree_CV <- train(test_result~., data=Train_data, method="rf", metric=metric, tuneLength=5, trControl=control)
+> print(RF_Tree_CV)
+#********************************************
+# Random Forest 
+# 
+# 255 samples
+# 8 predictor
+# 2 classes: 'negative', 'positive' 
+# 
+# No pre-processing
+# Resampling: Cross-Validated (12 fold, repeated 4 times) 
+# Summary of sample sizes: 234, 234, 234, 234, 234, 234, ... 
+# Resampling results across tuning parameters:
+#   
+#   mtry  Accuracy   Kappa    
+# 1     0.7459435  0.2874386
+# 7     0.7555073  0.3886633
+# 8     0.7612833  0.3988960
+# 
+# Accuracy was used to select the optimal model using  the largest value.
+# The final value used for the model was mtry = 8.
+#********************************************
+> plot(RF_Tree_CV)
+> #Testing with test data set:
+> predict_KRF_Tree = predict(RF_Tree_CV, Test_data, method = "class")
+> Missclassification_table = table(prediction = predict_KRF_Tree, Actual = Test_data$test_result)
+> confusionMatrix(Missclassification_table)
+*********************************************
+# Confusion Matrix and Statistics
+# 
+# Actual
+# prediction negative positive
+# negative       69       14
+# positive        8       30
+# 
+# Accuracy : 0.8182          
+# 95% CI : (0.7378, 0.8824)
+# No Information Rate : 0.6364          
+# P-Value [Acc > NIR] : 9.811e-06       
+# 
+# Kappa : 0.5953          
+# Mcnemar's Test P-Value : 0.2864          
+# 
+# Sensitivity : 0.8961          
+# Specificity : 0.6818          
+# Pos Pred Value : 0.8313          
+# Neg Pred Value : 0.7895          
+# Prevalence : 0.6364          
+# Detection Rate : 0.5702          
+# Detection Prevalence : 0.6860          
+# Balanced Accuracy : 0.7890          
+# 
+# 'Positive' Class : negative        
+#*********************************************                                         
+> #Accuracy when k =10 cv for a model on validation set is 
+> #Accuracy     mtry
+> #81.82        8
+> #80.17        7
+> #79.34        4
+> #82.64        8
+> #
+> #********************************************************************
+> 
